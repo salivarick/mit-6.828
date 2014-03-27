@@ -49,7 +49,7 @@ endif
 
 # try to infer the correct QEMU
 ifndef QEMU
-QEMU := $(shell if which /home/dale/Documents/source/qemu/qemu-6.828/build/bin/qemu  > /dev/null; \
+QEMU := $(shell if which /home/dale/Documents/source/qemu/qemu-6.828/build/bin/qemu > /dev/null; \
 	then echo /home/dale/Documents/source/qemu/qemu-6.828/build/bin/qemu; exit; \
 	else \
 	qemu=/Applications/Q.app/Contents/MacOS/i386-softmmu.app/Contents/MacOS/i386-softmmu; \
