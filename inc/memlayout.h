@@ -172,6 +172,7 @@ extern volatile pde_t uvpd[];     // VA of current page directory
  * You can map a struct PageInfo * to the corresponding physical address
  * with page2pa() in kern/pmap.h.
  */
+# define PGISIZE    48              // PageInfo Size
 struct PageInfo {
 	// Next page on the free list.
 	struct PageInfo *pp_link;
