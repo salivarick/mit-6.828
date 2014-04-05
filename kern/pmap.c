@@ -199,10 +199,12 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
+    cprintf("The stack is located at 0x%x\n", PADDR((void *) bootstack));
+    cprintf("The stacktop is located at 0x%x\n", PADDR((void *) bootstacktop));
     boot_map_region(kern_pgdir,
              KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR((void *) bootstack), PTE_W | PTE_P);
-    boot_map_region(kern_pgdir,
-             KSTACKTOP - PTSIZE, PTSIZE - KSTKSIZE, 0, 0);
+    // boot_map_region(kern_pgdir,
+    //         KSTACKTOP - PTSIZE, PTSIZE - KSTKSIZE, 0, 0);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -438,7 +440,7 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 
     for (i = 0; i < map_npages; ++ i) {
         if ((pte = pgdir_walk(pgdir, (void *) (va + i*PGSIZE), true)))
-            *pte = (PTE_ADDR(pa) + i*PGSIZE) | perm;
+            *pte = (PTE_ADDR(pa) + i*PGSIZE) | perm | PTE_P;
         assert(pte != 0);
     }
 }
