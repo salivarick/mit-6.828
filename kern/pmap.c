@@ -215,7 +215,7 @@ mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
     boot_map_region(kern_pgdir,
-            KERNBASE, 0x100000000 - KERNBASE, 0, PTE_W | PTE_P);
+            KERNBASE, 0x100000000 - KERNBASE, 0, PTE_W | PTE_PS | PTE_P);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -434,14 +434,24 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 {
 	// Fill this function in
 
-    size_t map_npages = size/PGSIZE;
+    size_t map_npages = 0;
     size_t i;
     pte_t *pte;
 
-    for (i = 0; i < map_npages; ++ i) {
-        if ((pte = pgdir_walk(pgdir, (void *) (va + i*PGSIZE), true)))
-            *pte = (PTE_ADDR(pa) + i*PGSIZE) | perm | PTE_P;
-        assert(pte != 0);
+    if (perm & PTE_PS) {
+        // 4MB page size
+        map_npages = size/PTSIZE;
+        for (i = 0; i < map_npages; ++ i)
+            pgdir [PDX(va)] = (PTE_ADDR(pa) + i*PTSIZE) | perm | PTE_P;
+    }
+    else {
+        // 4KB page size
+        map_npages = size/PGSIZE;
+        for (i = 0; i < map_npages; ++ i) {
+            if ((pte = pgdir_walk(pgdir, (void *) (va + i*PGSIZE), true)))
+                *pte = (PTE_ADDR(pa) + i*PGSIZE) | perm | PTE_P;
+            assert(pte != 0);
+        }
     }
 }
 
