@@ -10,6 +10,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/pmap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -24,7 +25,9 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-    { "backtrace", "Back trace the kernel stack", mon_backtrace }
+    { "backtrace", "Back trace the kernel stack", mon_backtrace }, 
+    { "showmappings", "Show virtual address mappings", mon_show_mappings }, 
+    { "memchmod", "Change memory mapping's permission", mon_mem_chmod }
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -57,7 +60,7 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 }
 
 int
-mon_backtrace(int argc, char **argv, struct Trapframe *tf)
+mon_backtrace (int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
     
@@ -91,7 +94,157 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
+char
+tolower (char c)
+{
+    if (c >= 'A' && c <= 'Z')
+        return c + 'a' - 'A';
+    else
+        return c;
+}
 
+int
+isxdigit (char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    else if (tolower(c) >= 'a' && tolower(c) <= 'f')
+        return c - 'a' + 10;
+    else
+        return -1;
+}
+
+int
+axtoi (char *s)
+{
+    int i, t;
+    int result = 0;
+    
+    for (i = 0; s[i] && s[i] != '0'; ++ i);
+
+    if (!s[i])
+        return -1;
+
+    if (tolower(s[i+1]) == 'x') {
+        i += 2;
+        while (s[i]) {
+            if ((t = isxdigit(s[i])) != -1) {
+                result <<= 4;
+                result += t;
+            }
+            else
+                break;
+            ++ i;
+        }
+        return result;
+    }
+    else
+        return -1;
+}
+
+void 
+print_mappings (uintptr_t vaddr, physaddr_t paddr, int perm)
+{
+    
+    if (perm & PTE_P) {
+        cprintf("0x%08x         0x%08x          ", vaddr, paddr);
+        
+        if (perm & PTE_W)
+            cprintf("RW");
+        else
+            cprintf("R-");
+        
+        cprintf("/");
+        if (perm & PTE_U) {
+            if (perm & PTE_W)
+                cprintf("RW");
+            else
+                cprintf("R-");
+        }
+        else
+            cprintf("--");
+    }
+    else
+        cprintf("0x%08x                             --/--", vaddr);
+
+    cprintf("\n");
+}
+
+int
+mon_show_mappings (int argc, char **argv, struct Trapframe *tf)
+{
+    uint32_t i, low_addr, high_addr;
+    pde_t *pgdir = (pde_t *) KADDR(rcr3());
+    pte_t *pte;
+    
+    if (argc > 3 || argc <= 1)
+        return 0;
+
+    if (argc == 3) {
+        low_addr = ROUNDUP(axtoi(argv[1]), PGSIZE);
+        high_addr = ROUNDDOWN(axtoi(argv[2]), PGSIZE);
+    }
+    else {
+        low_addr = ROUNDUP(axtoi(argv[1]), PGSIZE);
+        high_addr = ROUNDDOWN(axtoi(argv[1]), PGSIZE);
+    }
+
+    if (low_addr > high_addr) {
+        i = low_addr;
+        low_addr = high_addr;
+        high_addr = i;
+    }
+
+    cprintf("virtual address    physical address    permissions\n");
+    for (i = low_addr; i <= high_addr; i += PGSIZE) {
+        if ((pte = pgdir_walk(pgdir, (void *) i, 0)) != NULL)
+            print_mappings(i, PTE_ADDR(*pte), *pte);
+        else
+            print_mappings(i, 0, 0); 
+    }
+
+    return 0;
+}
+
+int
+atoperm (char *s)
+{
+    if (s[2] != '/')
+        return 0;
+
+    if (tolower(s[1]) == 'w')
+        return PTE_W | PTE_U;
+    else {
+        if (tolower(s[4]) == 'w')
+            return PTE_W;
+    }
+
+    return 0;
+}
+
+int
+mon_mem_chmod (int argc, char **argv, struct Trapframe *tf)
+{
+    uintptr_t vaddr;
+    int perm;
+    pde_t *pgdir = (pde_t *) KADDR(rcr3());
+    pte_t *pte;
+    
+    if (argc != 3)
+        return 0;
+
+    vaddr = ROUNDDOWN(axtoi(argv[1]), PGSIZE);
+    perm = atoperm(argv[2]);
+
+    if ((pte = pgdir_walk(pgdir, (void *) vaddr, 0)) != NULL) {
+        if (perm)
+            *pte = PTE_ADDR(*pte) | perm | PTE_P;
+        else
+            page_remove(pgdir, (void *) vaddr);
+    }
+
+    return 0;
+}
 
 /***** Kernel monitor command interpreter *****/
 
