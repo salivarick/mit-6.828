@@ -303,6 +303,37 @@ region_alloc(struct Env *e, void *va, size_t len)
     }
 }
 
+// ELF program segment reader
+static void
+elf_pro_seg_reader(uint8_t *binary, size_t size)
+{
+    struct Elf *elfhdr = (struct Elf *) binary;
+    struct Proghdr *ph, *eph;
+
+    if (elfhdr->e_magic != ELF_MAGIC)
+        panic("ELF file is invalid!");
+
+
+    cprintf("ELF's location on the 0x%08x (kernal address)\n", binary);
+    cprintf("Entry point 0x%08x\n", elfhdr->e_entry);
+    cprintf("There are %d program headers, starting at offset %d\n", 
+            elfhdr->e_phnum, elfhdr->e_phoff);
+    
+    ph = (struct Proghdr *) ((uint8_t *) binary + elfhdr->e_phoff);
+    eph = ph + elfhdr->e_phnum;
+
+    cprintf("Program Headers:\n");
+    //cprintf("Type        Offset    VirtAddr    PhysAddr    FileSiz    MemSiz    Flg  Align\n");
+    cprintf("Offset VirtAddr PhysAddr FileSiz MemSiz Flg Align\n");
+    for (; ph < eph; ++ ph) {
+        if (ph->p_type == ELF_PROG_LOAD)
+            cprintf("0x%08x 0x%08x 0x%08x 0x%08x 0x%08x %3d 0x%05x\n", 
+                    ph->p_offset, ph->p_va, ph->p_pa, 
+                    ph->p_filesz, ph->p_memsz, ph->p_flags, ph->p_align);
+    }
+}
+
+
 //
 // Set up the initial program binary, stack, and processor flags
 // for a user process.
@@ -359,49 +390,34 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 	// LAB 3: Your code here.
     struct Elf *elfhdr = (struct Elf *) binary;
     struct Proghdr *ph, *eph;
-    struct PageInfo *pp;
-    uint32_t i, j;
-    int r;
-
+    
     if (elfhdr->e_magic != ELF_MAGIC)
         panic("ELF file is invalid!");
 
-    cprintf("binary : 0x%08x\n", binary);
+    elf_pro_seg_reader(binary, size);
+
     ph = (struct Proghdr *) ((uint8_t *) binary + elfhdr->e_phoff);
     eph = ph + elfhdr->e_phnum;
 
+    // switch the address space
+    lcr3(PADDR(e->env_pgdir));
+    
     for (; ph < eph; ++ ph) {
         if (ph->p_type == ELF_PROG_LOAD) {
-                
-            cprintf("program segment: 0x%08x, 0x%08x, 0x%08x\n", 
-                    ph->p_va, ph->p_memsz, ph->p_filesz);
-            
-            if (ph->p_memsz > ph->p_filesz) {
-                for (i = 0; i < ph->p_memsz; i += PGSIZE) {
-                    if (!(pp = page_alloc(1)))
-                        panic("page alloc failed!");
-                    r = page_insert(e->env_pgdir, pp, (void *) (ph->p_va + i), 
-                            PTE_U | PTE_W | PTE_P);
-                    if (r < 0)
-                        panic("page_insert: %e", r);
-                }
-            }
-            else {
-                for (i = 0, j = 0; i < ph->p_memsz; i += PGSIZE, j += PGSIZE) {
-                    cprintf("binary + ph->p_offset : 0x%08x\n", 
-                            (uint8_t *) binary + ph->p_offset + j);
-                    r = page_insert(e->env_pgdir, 
-                            pa2page(PADDR((uint8_t *) binary + ph->p_offset + j)),
-                            (void *) (ph->p_va + i),
-                            PTE_U | PTE_W | PTE_P);
-                    if (r < 0)
-                        panic("page_insert: %e", r);
-                }    
-            }
+            // create the page table
+            region_alloc(e, (void *) ph->p_va, ph->p_memsz);
+            if (ph->p_memsz < ph->p_filesz)
+                panic("ELF file error!");
+            if (ph->p_memsz > ph->p_filesz)
+                memset((void *) ph->p_va, 0, ph->p_memsz);
+
+            memcpy((void *) ph->p_va, (uint8_t *) binary + ph->p_offset, ph->p_memsz);
         }
     }
-
-	// Now map one page for the program's initial stack
+    // switch the address space back
+    lcr3(PADDR(kern_pgdir));
+	
+    // Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
 	// LAB 3: Your code here.
@@ -568,7 +584,7 @@ env_run(struct Env *e)
     curenv->env_status = ENV_RUNNING;
     ++ curenv->env_runs;
     lcr3(PADDR(curenv->env_pgdir));
-    //env_pop_tf((struct Trapframe *) curenv);
+    env_pop_tf((struct Trapframe *) curenv);
     // env_pop_tf((struct Trapframe *) ((struct Env *) UENVS + (int) (curenv - envs)));
 
 	panic("env_run not yet implemented");
