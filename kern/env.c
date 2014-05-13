@@ -188,24 +188,25 @@ env_setup_vm(struct Env *e)
 	//    - The functions in kern/pmap.h are handy.
 
 	// LAB 3: Your code here.
-    e->env_pgdir = (pde_t *) KADDR(page2pa(p));
+    e->env_pgdir = (pde_t *) page2kva(p);
     ++ p->pp_ref;
 
 
     // UPAGES
-    e->env_pgdir[PDX(UPAGES)] = kern_pgdir[PDX(UPAGES)];
+    // e->env_pgdir[PDX(UPAGES)] = kern_pgdir[PDX(UPAGES)];
     
     // UENVS
-    e->env_pgdir[PDX(UENVS)] = kern_pgdir[PDX(UENVS)];
-    cprintf("%x\n", e->env_pgdir[PDX(UENVS)]);
+    // e->env_pgdir[PDX(UENVS)] = kern_pgdir[PDX(UENVS)];
     
-    // KERNBASE above
-    for (i = PDX(KERNBASE); i < NPDENTRIES; ++ i)
-        e->env_pgdir[i] = kern_pgdir[i];
+    // UTOP above
+    //for (i = PDX(UTOP); i < NPDENTRIES; ++ i)
+    //    e->env_pgdir[i] = kern_pgdir[i];
+    memcpy(e->env_pgdir + PDX(UTOP), kern_pgdir + PDX(UTOP), 
+            (NPDENTRIES - PDX(UTOP))*sizeof(pde_t));
 
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
-	e->env_pgdir[PDX(UVPT)] = PADDR(e->env_pgdir) | PTE_P | PTE_U;
+	e->env_pgdir[PDX(UVPT)] = page2pa(p) | PTE_P | PTE_U;
 
 	return 0;
 }
@@ -422,6 +423,7 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 
 	// LAB 3: Your code here.
     region_alloc(e, (void *) (USTACKTOP - PGSIZE), PGSIZE);
+    region_alloc(e, (void *) (UXSTACKTOP - PGSIZE), PGSIZE);
     // entry
     e->env_tf.tf_eip = elfhdr->e_entry; 
 }
@@ -523,7 +525,7 @@ env_destroy(struct Env *e)
 void
 env_pop_tf(struct Trapframe *tf)
 {
-    cprintf("reg_edi : 0x%x\n", tf->tf_regs.reg_edi);
+    /*cprintf("reg_edi : 0x%x\n", tf->tf_regs.reg_edi);
     cprintf("reg_esi : 0x%x\n", tf->tf_regs.reg_esi);
     cprintf("reg_ebp : 0x%x\n", tf->tf_regs.reg_ebp);
     cprintf("reg_oesp : 0x%x\n", tf->tf_regs.reg_oesp);
@@ -537,7 +539,7 @@ env_pop_tf(struct Trapframe *tf)
     cprintf("tf_ss : 0x%x\n", tf->tf_ss);
     cprintf("tf_esp : 0x%x\n", tf->tf_esp);
     cprintf("tf_cs : 0x%x\n", tf->tf_cs);
-    cprintf("tf_eip : 0x%x\n", tf->tf_eip);
+    cprintf("tf_eip : 0x%x\n", tf->tf_eip);*/
 
 	__asm __volatile("movl %0,%%esp\n"
 		"\tpopal\n"
