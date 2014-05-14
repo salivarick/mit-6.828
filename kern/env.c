@@ -271,6 +271,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	*newenv_store = e;
 
 	cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+    cprintf("env index = %d\n", ENVX(e->env_id));
 	return 0;
 }
 
@@ -412,7 +413,7 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
             if (ph->p_memsz > ph->p_filesz)
                 memset((void *) ph->p_va, 0, ph->p_memsz);
 
-            memcpy((void *) ph->p_va, (uint8_t *) binary + ph->p_offset, ph->p_memsz);
+            memcpy((void *) ph->p_va, (uint8_t *) binary + ph->p_offset, ph->p_filesz);
         }
     }
     // switch the address space back
