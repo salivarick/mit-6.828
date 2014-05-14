@@ -28,7 +28,9 @@ static struct Command commands[] = {
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
     { "backtrace", "Back trace the kernel stack", mon_backtrace }, 
     { "showmappings", "Show virtual address mappings", mon_show_mappings }, 
-    { "memchmod", "Change memory mapping's permission", mon_mem_chmod }
+    { "memchmod", "Change memory mapping's permission", mon_mem_chmod },
+    { "gotohail", "Go to hail", mon_hail },
+    { "debug_resume", "Env resmue to execute", mon_env_resume }
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -66,7 +68,8 @@ mon_backtrace (int argc, char **argv, struct Trapframe *tf)
 	// Your code here.
     
     struct Eipdebuginfo info;
-    uint32_t eip, *ebp = (uint32_t *)read_ebp();
+    uint32_t eip, *ebp = tf ? (uint32_t *) tf->tf_regs.reg_ebp : 
+                                (uint32_t *)read_ebp();
     int i;
 
     cprintf("Stack backtrace:\n");
@@ -243,6 +246,22 @@ mon_mem_chmod (int argc, char **argv, struct Trapframe *tf)
         else
             page_remove(pgdir, (void *) vaddr);
     }
+
+    return 0;
+}
+
+int
+mon_hail (int argc, char **argv, struct Trapframe *tf)
+{
+    asm volatile("int $0");
+    return 0;
+}
+
+int
+mon_env_resume (int argc, char **argv, struct Trapframe *tf)
+{
+    if (tf)
+        return -1;
 
     return 0;
 }

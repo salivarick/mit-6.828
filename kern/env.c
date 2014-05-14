@@ -191,16 +191,6 @@ env_setup_vm(struct Env *e)
     e->env_pgdir = (pde_t *) page2kva(p);
     ++ p->pp_ref;
 
-
-    // UPAGES
-    // e->env_pgdir[PDX(UPAGES)] = kern_pgdir[PDX(UPAGES)];
-    
-    // UENVS
-    // e->env_pgdir[PDX(UENVS)] = kern_pgdir[PDX(UENVS)];
-    
-    // UTOP above
-    //for (i = PDX(UTOP); i < NPDENTRIES; ++ i)
-    //    e->env_pgdir[i] = kern_pgdir[i];
     memcpy(e->env_pgdir + PDX(UTOP), kern_pgdir + PDX(UTOP), 
             (NPDENTRIES - PDX(UTOP))*sizeof(pde_t));
 
@@ -526,22 +516,6 @@ env_destroy(struct Env *e)
 void
 env_pop_tf(struct Trapframe *tf)
 {
-    /*cprintf("reg_edi : 0x%x\n", tf->tf_regs.reg_edi);
-    cprintf("reg_esi : 0x%x\n", tf->tf_regs.reg_esi);
-    cprintf("reg_ebp : 0x%x\n", tf->tf_regs.reg_ebp);
-    cprintf("reg_oesp : 0x%x\n", tf->tf_regs.reg_oesp);
-    cprintf("reg_ebx : 0x%x\n", tf->tf_regs.reg_ebx);
-    cprintf("reg_edx : 0x%x\n", tf->tf_regs.reg_edx);
-    cprintf("reg_ecx : 0x%x\n", tf->tf_regs.reg_ecx);
-    cprintf("reg_eax : 0x%x\n", tf->tf_regs.reg_eax);
-
-    cprintf("tf_ds : 0x%x\n", tf->tf_ds);
-    cprintf("tf_es : 0x%x\n", tf->tf_es);
-    cprintf("tf_ss : 0x%x\n", tf->tf_ss);
-    cprintf("tf_esp : 0x%x\n", tf->tf_esp);
-    cprintf("tf_cs : 0x%x\n", tf->tf_cs);
-    cprintf("tf_eip : 0x%x\n", tf->tf_eip);*/
-
 	__asm __volatile("movl %0,%%esp\n"
 		"\tpopal\n"
 		"\tpopl %%es\n"
@@ -588,7 +562,6 @@ env_run(struct Env *e)
     ++ curenv->env_runs;
     lcr3(PADDR(curenv->env_pgdir));
     env_pop_tf((struct Trapframe *) curenv);
-    // env_pop_tf((struct Trapframe *) ((struct Env *) UENVS + (int) (curenv - envs)));
 
 	panic("env_run not yet implemented");
 }
