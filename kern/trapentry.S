@@ -82,4 +82,21 @@ _alltraps:
     movw    %ax,    %ds
     movw    %ax,    %es
     pushl   %esp
-    call    trap  
+    call    trap
+
+_sysenter_handle:
+    
+    .global FASTSYSCALL;
+    .type FASTSYSCALL, @function;
+    .align 2;
+    FASTSYSCALL:
+    pushl $0
+    pushl %edi
+    pushl %ebx
+    pushl %ecx
+    pushl %edx
+    pushl %eax
+    call syscall
+    movl %esi,  %edx
+    movl %ebp,  %ecx
+    sysexit 

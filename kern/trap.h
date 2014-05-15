@@ -41,4 +41,6 @@ extern void SIMDERR();
 extern void SYSCALL();
 extern void DEFAULT();
 
+extern void FASTSYSCALL();
+
 #endif /* JOS_KERN_TRAP_H */

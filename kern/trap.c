@@ -59,13 +59,32 @@ static const char *trapname(int trapno)
 }
 
 void
-print_trap (int trapno)
+print_trap(int trapno)
 {
     cprintf("%s\t%d\t0x%08x\t%s\t%d\n", trapname(trapno),
             idt[trapno].gd_sel,
             (idt[trapno].gd_off_31_16 << 16) + idt[trapno].gd_off_15_0,
             idt[trapno].gd_type == STS_TG32 ? "STS_TG32" : "STS_IG32",
             idt[trapno].gd_dpl);
+}
+
+void
+set_sys_enter_msr(uint32_t msr, uint32_t msr_addr)
+{
+     __asm__ __volatile__ ("wrmsr\n"
+            : /* no output  */
+            : "a" (msr),
+              "c" (msr_addr),
+              "d" (0)
+            : "cc", "memory");
+}
+
+void
+init_fast_sys_call(void)
+{
+    set_sys_enter_msr(GD_KT, IA32_SYSENTER_CS_ADDR); 
+    set_sys_enter_msr(KSTACKTOP, IA32_SYSENTER_ESP_ADDR); 
+    set_sys_enter_msr((uint32_t) FASTSYSCALL, IA32_SYSENTER_EIP_ADDR); 
 }
 
 void
@@ -93,8 +112,10 @@ trap_init(void)
     SETGATE(idt[T_FPERR], 1, GD_KT, FPERR, 0);        
     SETGATE(idt[T_ALIGN], 1, GD_KT, ALIGN, 0);        
     SETGATE(idt[T_MCHK], 1, GD_KT, MCHK, 0);        
-    SETGATE(idt[T_SIMDERR], 1, GD_KT, SIMDERR, 0);      
+    SETGATE(idt[T_SIMDERR], 1, GD_KT, SIMDERR, 0);
+#if !FAST_SYS_CALL
     SETGATE(idt[T_SYSCALL], 1, GD_KT, SYSCALL, 3);
+#endif // !FAST_SYS_CALL
     // SETGATE(idt[T_DEFAULT], 1, GD_KT, DEFAULT, 0);
 
     // print_trap(T_DIVIDE);
@@ -117,7 +138,10 @@ trap_init(void)
     // print_trap(T_SIMDERR);
     // print_trap(T_SYSCALL);
     // print_trap(T_DEFAULT);
-	
+
+#if FAST_SYS_CALL
+    init_fast_sys_call();
+#endif
     // Per-CPU setup 
 	trap_init_percpu();
 }
