@@ -186,6 +186,7 @@ struct PageInfo {
 
 	uint16_t pp_ref;
 };
+# define PGISIZE    sizeof(struct PageInfo)              // PageInfo Size
 
 #endif /* !__ASSEMBLER__ */
 #endif /* !JOS_INC_MEMLAYOUT_H */

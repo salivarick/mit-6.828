@@ -22,6 +22,11 @@ sys_cputs(const char *s, size_t len)
 	// Destroy the environment if not.
 
 	// LAB 3: Your code here.
+    pte_t *pte;
+    bool flag = true;
+    uintptr_t va;
+    
+    user_mem_assert(curenv, (void *) s, len, 0);
 
 	// Print the string supplied by the user.
 	cprintf("%.*s", len, s);
@@ -62,6 +67,14 @@ sys_env_destroy(envid_t envid)
 	env_destroy(e);
 	return 0;
 }
+/*
+int32_t
+fastsyscall() 
+{
+    __asm__ _volatile__ (
+            )
+}
+*/
 
 // Deschedule current environment and pick a different one to run.
 static void
@@ -270,7 +283,22 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	// Call the function corresponding to the 'syscallno' parameter.
 	// Return any appropriate return value.
 	// LAB 3: Your code here.
+   
+#if FAST_SYS_CALL
+    //cprintf("Fast system call %d\n", syscallno);
+    /*cprintf("arg1 = %08x\t arg2 = %08x\t \
+            arg3 = %08x\t arg4 = %08x\t arg5 = %08x\t",
+            a1, a2, a3, a4, a5);*/
+#endif
 
+    switch (syscallno) {
+    case SYS_cputs:         sys_cputs((const char *) a1, (size_t) a2); 
+                            return 0; 
+    case SYS_cgetc:         return (uint32_t) sys_cgetc();
+    case SYS_getenvid:      return (uint32_t) sys_getenvid();
+    case SYS_env_destroy:   return (uint32_t) sys_env_destroy((envid_t)a1);
+    case NSYSCALLS:         return -E_INVAL;
+    }
 	panic("syscall not implemented");
 }
 
