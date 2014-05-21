@@ -74,6 +74,7 @@ start32:
 	movl    $0x0, %ebp       # nuke frame pointer
 
 	# Call mp_main().  (Exercise for the reader: why the indirect call?)
+    # Because we jump to high EIP, otherwise we still at a low EIP
 	movl    $mp_main, %eax
 	call    *%eax
 

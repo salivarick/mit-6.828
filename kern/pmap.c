@@ -217,10 +217,12 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-    cprintf("The stack is located at 0x%x\n", PADDR((void *) bootstack));
-    cprintf("The stacktop is located at 0x%x\n", PADDR((void *) bootstacktop));
-    boot_map_region(kern_pgdir,
-             KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR((void *) bootstack), PTE_W | PTE_P);
+    
+    // cprintf("The stack is located at 0x%x\n", PADDR((void *) bootstack));
+    // cprintf("The stacktop is located at 0x%x\n", PADDR((void *) bootstacktop));
+    // useless
+    // boot_map_region(kern_pgdir,
+    //        KSTACKTOP, KSTKSIZE, PADDR((void *) bootstack), PTE_W | PTE_P);
     // boot_map_region(kern_pgdir,
     //         KSTACKTOP - PTSIZE, PTSIZE - KSTKSIZE, 0, 0);
 
@@ -285,6 +287,13 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
+    int i;
+
+    for (i = 0; i < NCPU; ++ i) {
+        boot_map_region(kern_pgdir,
+             KSTACKTOP - (i+1)*(KSTKSIZE+KSTKGAP) + KSTKGAP, KSTKSIZE, 
+             PADDR((void *) percpu_kstacks[i]), PTE_W | PTE_P);
+    }
 
 }
 
@@ -330,11 +339,10 @@ page_init(void)
 
 	for (i = 0; i < npages; ++ i) {
         is_free = 1;
-        // condition 1) and condition 3) and condition 4)
-        if (i == 0 || (i >= IOPHYSMEM>>PGSHIFT 
-                    && i < PADDR(boot_alloc(0))>>PGSHIFT)) {
+        // condition 1) and condition 3) and condition 4) and condition lab4
+        if (i == 0 || i == MPENTRY_PADDR>>PGSHIFT ||
+            (i >= IOPHYSMEM>>PGSHIFT && i < PADDR(boot_alloc(0))>>PGSHIFT))
             is_free = 0;
-        } 
 	    // pp_ref should be 0, because we haven't use page_alloc()	
         pages[i].pp_ref = 0;
         if (is_free) {
@@ -661,6 +669,18 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
+
+    uintptr_t addr;
+
+    size = ROUNDUP(size, PGSIZE);
+    if (base >= MMIOLIM || base + size > MMIOLIM)
+        panic("memory-mapped I/O overflow");
+
+    addr = base;
+    boot_map_region(kern_pgdir, base, size, pa, PTE_PCD | PTE_PWT | PTE_W);
+    base += size;
+    
+    return (void *) addr;
 	panic("mmio_map_region not implemented");
 }
 

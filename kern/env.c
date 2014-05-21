@@ -450,6 +450,7 @@ env_create(uint8_t *binary, size_t size, enum EnvType type)
     
     e->env_type = type;
     load_icode(e, binary, size);
+    cprintf("load elf OK\n");
 }
 
 //
@@ -580,14 +581,20 @@ env_run(struct Env *e)
 
 	// LAB 3: Your code here.
     if (curenv) {
-        if (curenv->env_status == ENV_RUNNING)
+        if (curenv != e && curenv->env_status == ENV_RUNNING) {
             curenv->env_status = ENV_RUNNABLE;
+            e->env_status = ENV_RUNNING;
+        }
     }
+    else
+        e->env_status = ENV_RUNNING;
+
+    ++ e->env_runs;
     curenv = e;
-    curenv->env_status = ENV_RUNNING;
-    ++ curenv->env_runs;
     lcr3(PADDR(curenv->env_pgdir));
+
+    unlock_kernel();
     env_pop_tf((struct Trapframe *) curenv);
 
-	panic("env_run not yet implemented");
+	// panic("env_run not yet implemented");
 }

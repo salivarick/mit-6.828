@@ -67,14 +67,6 @@ sys_env_destroy(envid_t envid)
 	env_destroy(e);
 	return 0;
 }
-/*
-int32_t
-fastsyscall() 
-{
-    __asm__ _volatile__ (
-            )
-}
-*/
 
 // Deschedule current environment and pick a different one to run.
 static void
@@ -297,8 +289,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
     case SYS_cgetc:         return (uint32_t) sys_cgetc();
     case SYS_getenvid:      return (uint32_t) sys_getenvid();
     case SYS_env_destroy:   return (uint32_t) sys_env_destroy((envid_t)a1);
+    case SYS_yield:         sys_yield(); return 0;
     case NSYSCALLS:         return -E_INVAL;
     }
 	panic("syscall not implemented");
 }
-
