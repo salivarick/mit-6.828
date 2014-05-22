@@ -30,29 +30,30 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-    cprintf("cpu id is %d \n", cpunum());
-    if (!curenv || ((curenv + 1) >= envs+NENV))
-        idle = envs;
-    else
-        idle = curenv + 1;
-
-    for (i = 0; i <= NENV; 
-            idle = envs + (idle-envs)%NENV, ++ i) {
-        if (idle->env_status == ENV_RUNNABLE)
+    cprintf("cpu %d sched yield, curenv is %x\n", cpunum(), curenv);
+    for (i = curenv ? (curenv-envs)%NENV : 0; i < NENV; ++ i) {
+        if (envs[i%NENV].env_status == ENV_RUNNABLE) {
+            cprintf("env %d status is ENV_RUNNABLE\n", envs[i%NENV].env_status);
             break;
+        }
+    }
+    if (i == NENV) i = curenv ? (curenv-envs)%NENV : 0;
+    cprintf("cpu %d sched yield, curenv is %x\n", cpunum(), envs + i);
+    //cprintf("env status is %s %d\n", 
+    //        envs[i].env_status == ENV_RUNNING ? "running" : 
+    //        envs[i].env_status == ENV_RUNNABLE ? "runnable" : "others",
+    //        envs[i].env_status);
+    
+    if ((curenv == envs + i && envs[i].env_status == ENV_RUNNING) || 
+            envs[i].env_status == ENV_RUNNABLE) {
+        if (envs[i].env_status == ENV_RUNNING)
+            cprintf("env RUNNING %d\n", envs[i].env_id);
+        else
+            cprintf("env RUNNABLE %d\n", envs[i].env_id);
+        cprintf("run env %d\n", envs[i].env_id);
+        env_run(envs+i);
     }
 
-    if (idle->env_status != ENV_FREE &&
-            ((idle != curenv && idle->env_status == ENV_RUNNABLE) 
-             || (idle == curenv && idle->env_status == ENV_RUNNING))) {
-        if (idle == curenv)
-            cprintf("original env\n");
-        else {
-            cprintf("not original env, env id is %d\n", idle->env_id);
-        }
-        cprintf("scheduler env run\n");
-        env_run(idle);
-    }
     // sched_halt never returns
     sched_halt();
 }
@@ -64,7 +65,6 @@ sched_yield(void)
 sched_halt(void)
 {
     int i;
-
     cprintf("cpu id %d sched halt\n", cpunum());
     // For debugging and testing purposes, if there are no runnable
     // environments in the system, then drop into the kernel monitor.
@@ -73,7 +73,7 @@ sched_halt(void)
                     envs[i].env_status == ENV_RUNNING))
             break;
     }
-    cprintf("checkpoin1\n");
+    cprintf("cpu id %d checkpoin1\n", cpunum());
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
         while (1)
@@ -92,7 +92,7 @@ sched_halt(void)
 
     // Release the big kernel lock as if we were "leaving" the kernel
     unlock_kernel();
-    cprintf("checkpoint5");
+    cprintf("%d checkpoint5 %x\n", cpunum(), thiscpu->cpu_ts.ts_esp0);
     // Reset stack pointer, enable interrupts and then halt.
     asm volatile (
             "movl $0, %%ebp\n"
@@ -103,4 +103,3 @@ sched_halt(void)
             "hlt\n"
             : : "a" (thiscpu->cpu_ts.ts_esp0));
 }
-

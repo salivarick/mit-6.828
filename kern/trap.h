@@ -43,4 +43,11 @@ extern void DEFAULT();
 
 extern void FASTSYSCALL();
 
+extern void IRQTIMER();
+extern void IRQKBD();
+extern void IRQSERIAL();
+extern void IRQSPURIOUS();
+extern void IRQIDE();
+extern void IRQERROR();
+
 #endif /* JOS_KERN_TRAP_H */

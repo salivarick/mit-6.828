@@ -580,19 +580,30 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
-    if (curenv) {
-        if (curenv != e && curenv->env_status == ENV_RUNNING) {
+    if (curenv != e) {
+        if (curenv)
             curenv->env_status = ENV_RUNNABLE;
-            e->env_status = ENV_RUNNING;
-        }
+        curenv = e;
     }
-    else
-        e->env_status = ENV_RUNNING;
 
-    ++ e->env_runs;
-    curenv = e;
+    curenv->env_status = ENV_RUNNING;
+    curenv->env_cpunum = cpunum();
+    ++ curenv->env_runs;
+
+   // if (curenv) {
+   //     if (curenv != e && curenv->env_status == ENV_RUNNING) {
+   //         curenv->env_status = ENV_RUNNABLE;
+   //         e->env_status = ENV_RUNNING;
+   //     }
+   // }
+   // else
+   //     e->env_status = ENV_RUNNING;
+
+   // ++ e->env_runs;
+   // curenv = e;
     lcr3(PADDR(curenv->env_pgdir));
 
+    cprintf("kernel unlock\n");
     unlock_kernel();
     env_pop_tf((struct Trapframe *) curenv);
 

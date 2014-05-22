@@ -114,7 +114,7 @@ trap_init(void)
     SETGATE(idt[T_TSS], 1, GD_KT, TSS, 0);        
     SETGATE(idt[T_SEGNP], 1, GD_KT, SEGNP, 0);        
     SETGATE(idt[T_STACK], 1, GD_KT, STACK, 0);        
-    SETGATE(idt[T_GPFLT], 0, GD_KT, GPFLT, 0);        
+    SETGATE(idt[T_GPFLT], 1, GD_KT, GPFLT, 0);        
     SETGATE(idt[T_PGFLT], 1, GD_KT, PGFLT, 0);        
     SETGATE(idt[T_FPERR], 1, GD_KT, FPERR, 0);        
     SETGATE(idt[T_ALIGN], 1, GD_KT, ALIGN, 0);        
@@ -123,6 +123,15 @@ trap_init(void)
 #if !FAST_SYS_CALL
     SETGATE(idt[T_SYSCALL], 1, GD_KT, SYSCALL, 3);
 #endif // !FAST_SYS_CALL
+
+    
+    SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, IRQTIMER, 0);
+    SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, IRQKBD, 0);
+    SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, IRQSERIAL, 0);
+    SETGATE(idt[IRQ_OFFSET + IRQ_SPURIOUS], 0, GD_KT, IRQSPURIOUS, 0);
+    SETGATE(idt[IRQ_OFFSET + IRQ_IDE], 0, GD_KT, IRQIDE, 0);
+    SETGATE(idt[IRQ_OFFSET + IRQ_ERROR], 0, GD_KT, IRQERROR, 0);
+
     // SETGATE(idt[T_DEFAULT], 1, GD_KT, DEFAULT, 0);
 
     // print_trap(T_DIVIDE);
@@ -183,6 +192,7 @@ trap_init_percpu(void)
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
 	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - (thiscpu->cpu_id)*(KSTKSIZE+KSTKGAP);
+    cprintf("cpu %d ts esp0 is %x\n", cpunum(), thiscpu->cpu_ts.ts_esp0);
 	thiscpu->cpu_ts.ts_ss0 = GD_KD;
 	
     // Initialize the TSS slot of the gdt.
@@ -284,6 +294,7 @@ trap_dispatch(struct Trapframe *tf)
                             cprintf("there is no syscall no is %d\n", 
                                     tf->tf_regs.reg_eax);
                         break;
+    case   IRQ_OFFSET + IRQ_TIMER: return;
     defalut:            break;
     } 
 	
@@ -316,6 +327,7 @@ trap(struct Trapframe *tf)
 	// Check that interrupts are disabled.  If this assertion
 	// fails, DO NOT be tempted to fix it by inserting a "cli" in
 	// the interrupt path.
+    cprintf("eflags&FL_IF = %x\n", read_eflags()&FL_IF);
 	assert(!(read_eflags() & FL_IF));
 
 	if ((tf->tf_cs & 3) == 3) {
@@ -325,6 +337,7 @@ trap(struct Trapframe *tf)
 		// LAB 4: Your code here.
 		assert(curenv);
         lock_kernel();
+        cprintf("kernel locked\n");
 
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING) {
