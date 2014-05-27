@@ -132,32 +132,9 @@ trap_init(void)
     SETGATE(idt[IRQ_OFFSET + IRQ_IDE], 0, GD_KT, IRQIDE, 0);
     SETGATE(idt[IRQ_OFFSET + IRQ_ERROR], 0, GD_KT, IRQERROR, 0);
 
-    // SETGATE(idt[T_DEFAULT], 1, GD_KT, DEFAULT, 0);
-
-    // print_trap(T_DIVIDE);
-    // print_trap(T_DEBUG);
-    // print_trap(T_NMI);
-    // print_trap(T_BRKPT);
-    // print_trap(T_OFLOW);
-    // print_trap(T_BOUND);
-    // print_trap(T_ILLOP);
-    // print_trap(T_DEVICE);
-    // print_trap(T_DBLFLT);
-    // print_trap(T_TSS);
-    // print_trap(T_SEGNP);
-    // print_trap(T_STACK);
-    // print_trap(T_GPFLT);
-    // print_trap(T_PGFLT);
-    // print_trap(T_FPERR);
-    // print_trap(T_ALIGN);
-    // print_trap(T_MCHK);
-    // print_trap(T_SIMDERR);
-    // print_trap(T_SYSCALL);
-    // print_trap(T_DEFAULT);
-
 #if FAST_SYS_CALL
     init_fast_sys_call();
-#endif
+#endif // !FAST_SYS_CALL
     // Per-CPU setup 
 	trap_init_percpu();
 }
@@ -327,7 +304,6 @@ trap(struct Trapframe *tf)
 	// Check that interrupts are disabled.  If this assertion
 	// fails, DO NOT be tempted to fix it by inserting a "cli" in
 	// the interrupt path.
-    cprintf("eflags&FL_IF = %x\n", read_eflags()&FL_IF);
 	assert(!(read_eflags() & FL_IF));
 
 	if ((tf->tf_cs & 3) == 3) {
@@ -337,7 +313,6 @@ trap(struct Trapframe *tf)
 		// LAB 4: Your code here.
 		assert(curenv);
         lock_kernel();
-        cprintf("kernel locked\n");
 
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING) {

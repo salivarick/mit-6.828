@@ -30,29 +30,16 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-    cprintf("cpu %d sched yield, curenv is %x\n", cpunum(), curenv);
     for (i = curenv ? (curenv-envs)%NENV : 0; i < NENV; ++ i) {
-        if (envs[i%NENV].env_status == ENV_RUNNABLE) {
-            cprintf("env %d status is ENV_RUNNABLE\n", envs[i%NENV].env_status);
+        if (envs[i%NENV].env_status == ENV_RUNNABLE)
             break;
-        }
     }
+
     if (i == NENV) i = curenv ? (curenv-envs)%NENV : 0;
-    cprintf("cpu %d sched yield, curenv is %x\n", cpunum(), envs + i);
-    //cprintf("env status is %s %d\n", 
-    //        envs[i].env_status == ENV_RUNNING ? "running" : 
-    //        envs[i].env_status == ENV_RUNNABLE ? "runnable" : "others",
-    //        envs[i].env_status);
     
     if ((curenv == envs + i && envs[i].env_status == ENV_RUNNING) || 
-            envs[i].env_status == ENV_RUNNABLE) {
-        if (envs[i].env_status == ENV_RUNNING)
-            cprintf("env RUNNING %d\n", envs[i].env_id);
-        else
-            cprintf("env RUNNABLE %d\n", envs[i].env_id);
-        cprintf("run env %d\n", envs[i].env_id);
+            envs[i].env_status == ENV_RUNNABLE)
         env_run(envs+i);
-    }
 
     // sched_halt never returns
     sched_halt();
@@ -65,7 +52,7 @@ sched_yield(void)
 sched_halt(void)
 {
     int i;
-    cprintf("cpu id %d sched halt\n", cpunum());
+    
     // For debugging and testing purposes, if there are no runnable
     // environments in the system, then drop into the kernel monitor.
     for (i = 0; i < NENV; i++) {
@@ -73,18 +60,17 @@ sched_halt(void)
                     envs[i].env_status == ENV_RUNNING))
             break;
     }
-    cprintf("cpu id %d checkpoin1\n", cpunum());
+    
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
         while (1)
             monitor(NULL);
     }
-    cprintf("checkpoint2\n");
 
     // Mark that no environment is running on this CPU
     curenv = NULL;
     lcr3(PADDR(kern_pgdir));
-    cprintf("checkpoint3\n");
+    
     // Mark that this CPU is in the HALT state, so that when
     // timer interupts come in, we know we should re-acquire the
     // big kernel lock
@@ -92,7 +78,7 @@ sched_halt(void)
 
     // Release the big kernel lock as if we were "leaving" the kernel
     unlock_kernel();
-    cprintf("%d checkpoint5 %x\n", cpunum(), thiscpu->cpu_ts.ts_esp0);
+    
     // Reset stack pointer, enable interrupts and then halt.
     asm volatile (
             "movl $0, %%ebp\n"

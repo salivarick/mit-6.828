@@ -273,7 +273,6 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	*newenv_store = e;
 
 	cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
-    cprintf("env index = %d\n", ENVX(e->env_id));
 	return 0;
 }
 
@@ -590,20 +589,8 @@ env_run(struct Env *e)
     curenv->env_cpunum = cpunum();
     ++ curenv->env_runs;
 
-   // if (curenv) {
-   //     if (curenv != e && curenv->env_status == ENV_RUNNING) {
-   //         curenv->env_status = ENV_RUNNABLE;
-   //         e->env_status = ENV_RUNNING;
-   //     }
-   // }
-   // else
-   //     e->env_status = ENV_RUNNING;
-
-   // ++ e->env_runs;
-   // curenv = e;
     lcr3(PADDR(curenv->env_pgdir));
 
-    cprintf("kernel unlock\n");
     unlock_kernel();
     env_pop_tf((struct Trapframe *) curenv);
 
