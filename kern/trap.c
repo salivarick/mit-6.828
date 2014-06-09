@@ -345,11 +345,14 @@ trap(struct Trapframe *tf)
 		sched_yield();
 }
 
-
 void
 page_fault_handler(struct Trapframe *tf)
 {
 	uint32_t fault_va;
+    struct UTrapframe *utf;
+    /* uint32_t curesp;
+    uint32_t env_esp;
+    uint32_t env_eip; */
 
 	// Read processor's CR2 register to find the faulting address
 	fault_va = rcr2();
@@ -393,9 +396,62 @@ page_fault_handler(struct Trapframe *tf)
 
 	// LAB 4: Your code here.
 
-	// Destroy the environment that caused the fault.
-	cprintf("[%08x] user fault va %08x ip %08x\n",
-		curenv->env_id, fault_va, tf->tf_eip);
-	print_trapframe(tf);
-	env_destroy(curenv);
+    /* there is a user mode page fault upcall */
+
+    user_mem_assert(curenv, (void *) (UXSTACKTOP-PGSIZE), PGSIZE, PTE_P | PTE_W);
+    if (curenv->env_pgfault_upcall) {
+        cprintf("page fault at va %08x, esp is %08x\n", fault_va, tf->tf_esp);
+        /* recursive trap */
+        if (tf->tf_esp > UXSTACKTOP-PGSIZE && tf->tf_esp < UXSTACKTOP) {
+            utf = (struct UTrapframe *) (tf->tf_esp-sizeof(struct UTrapframe)-4
+                    /* blank word */);
+            cprintf("page fault in user handler\n");
+        }
+        else
+            utf = (struct UTrapframe *) (UXSTACKTOP-sizeof(struct UTrapframe));
+        /* utf->utf_esp = read_esp(); */
+        /* curesp = read_esp(); */
+        
+        /* setup exception stack */
+        utf->utf_regs       = tf->tf_regs;
+        utf->utf_esp        = tf->tf_esp;
+        utf->utf_eip        = tf->tf_eip;
+        utf->utf_eflags     = tf->tf_eflags;
+        utf->utf_fault_va   = fault_va;
+        utf->utf_err        = tf->tf_err;
+        /* setup tf for env run */
+        tf->tf_esp = (uint32_t) utf;
+        tf->tf_eip = (uint32_t) curenv->env_pgfault_upcall;
+        env_run(curenv);
+
+        /*env_eip = tf->tf_eip;
+        env_esp = tf->tf_esp;
+
+        __asm__ __volatile__ (
+                "movl UXSTACKTOP, %%esp \n\t"
+                "pushl %1 \n\t"
+                "pushfl \n\t"
+                "leal return_to_trap, %%esi \n\t"
+                "pushl %%esi \n\t"
+                "pushal \n\t"
+                "pushl %2 \n\t"
+                "pushl %3 \n\t"
+                "movl %%esp, %0 \n\t"
+                : "=r" (tf->tf_esp)
+                : "r" (curesp), 
+                  "r" (curenv->env_tf.tf_err),
+                  "r" (fault_va)
+                : "memory", "cc", "esi", "esp");
+        tf->tf_eip = (uintptr_t) curenv->env_pgfault_upcall;
+        env_run(curenv);
+        __asm__ __volatile__ ("return_to_trap: \n\t");*/
+
+    }
+    else {
+        // Destroy the environment that caused the fault.
+        cprintf("[%08x] user fault va %08x ip %08x\n",
+                curenv->env_id, fault_va, tf->tf_eip);
+        print_trapframe(tf);
+        env_destroy(curenv);
+    }
 }
