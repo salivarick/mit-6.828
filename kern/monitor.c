@@ -181,16 +181,20 @@ mon_show_mappings (int argc, char **argv, struct Trapframe *tf)
     pde_t *pgdir = (pde_t *) KADDR(rcr3());
     pte_t *pte;
     
-    if (argc > 3 || argc <= 1)
+    if (argc > 3 || argc < 0 || argc == 2)
         return 0;
 
     if (argc == 3) {
         low_addr = ROUNDUP(axtoi(argv[1]), PGSIZE);
         high_addr = ROUNDDOWN(axtoi(argv[2]), PGSIZE);
     }
-    else {
+    else if (argc == 1){
         low_addr = ROUNDUP(axtoi(argv[1]), PGSIZE);
         high_addr = ROUNDDOWN(axtoi(argv[1]), PGSIZE);
+    }
+    else {
+        low_addr = 0;
+        high_addr = UTOP;
     }
 
     if (low_addr > high_addr) {
@@ -201,10 +205,11 @@ mon_show_mappings (int argc, char **argv, struct Trapframe *tf)
 
     cprintf("virtual address    physical address    permissions\n");
     for (i = low_addr; i <= high_addr; i += PGSIZE) {
-        if ((pte = pgdir_walk(pgdir, (void *) i, 0)) != NULL)
+        if (((pte = pgdir_walk(pgdir, (void *) i, 0)) != NULL) && 
+                (*pte & PTE_P))
             print_mappings(i, PTE_ADDR(*pte), *pte);
-        else
-            print_mappings(i, 0, 0); 
+        /* else
+            print_mappings(i, 0, 0); */
     }
 
     return 0;

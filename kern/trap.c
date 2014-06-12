@@ -400,18 +400,15 @@ page_fault_handler(struct Trapframe *tf)
 
     user_mem_assert(curenv, (void *) (UXSTACKTOP-PGSIZE), PGSIZE, PTE_P | PTE_W);
     if (curenv->env_pgfault_upcall) {
-        cprintf("page fault at va %08x, esp is %08x\n", fault_va, tf->tf_esp);
+        //cprintf("page fault at va %08x, esp is %08x\n", fault_va, tf->tf_esp);
         /* recursive trap */
         if (tf->tf_esp > UXSTACKTOP-PGSIZE && tf->tf_esp < UXSTACKTOP) {
             utf = (struct UTrapframe *) (tf->tf_esp-sizeof(struct UTrapframe)-4
                     /* blank word */);
-            cprintf("page fault in user handler\n");
+            //cprintf("page fault in user handler\n");
         }
         else
             utf = (struct UTrapframe *) (UXSTACKTOP-sizeof(struct UTrapframe));
-        /* utf->utf_esp = read_esp(); */
-        /* curesp = read_esp(); */
-        
         /* setup exception stack */
         utf->utf_regs       = tf->tf_regs;
         utf->utf_esp        = tf->tf_esp;
@@ -423,29 +420,6 @@ page_fault_handler(struct Trapframe *tf)
         tf->tf_esp = (uint32_t) utf;
         tf->tf_eip = (uint32_t) curenv->env_pgfault_upcall;
         env_run(curenv);
-
-        /*env_eip = tf->tf_eip;
-        env_esp = tf->tf_esp;
-
-        __asm__ __volatile__ (
-                "movl UXSTACKTOP, %%esp \n\t"
-                "pushl %1 \n\t"
-                "pushfl \n\t"
-                "leal return_to_trap, %%esi \n\t"
-                "pushl %%esi \n\t"
-                "pushal \n\t"
-                "pushl %2 \n\t"
-                "pushl %3 \n\t"
-                "movl %%esp, %0 \n\t"
-                : "=r" (tf->tf_esp)
-                : "r" (curesp), 
-                  "r" (curenv->env_tf.tf_err),
-                  "r" (fault_va)
-                : "memory", "cc", "esi", "esp");
-        tf->tf_eip = (uintptr_t) curenv->env_pgfault_upcall;
-        env_run(curenv);
-        __asm__ __volatile__ ("return_to_trap: \n\t");*/
-
     }
     else {
         // Destroy the environment that caused the fault.

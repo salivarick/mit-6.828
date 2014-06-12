@@ -417,6 +417,9 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
             memcpy((void *) ph->p_va, (uint8_t *) binary + ph->p_offset, ph->p_filesz);
         }
     }
+    // show virtual memory map
+    mon_show_mappings(0, NULL, NULL);
+
     // switch the address space back
     lcr3(PADDR(kern_pgdir));
 	
@@ -425,7 +428,7 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 
 	// LAB 3: Your code here.
     region_alloc(e, (void *) (USTACKTOP - PGSIZE), PGSIZE);
-    region_alloc(e, (void *) (UXSTACKTOP - PGSIZE), PGSIZE);
+
     // entry
     e->env_tf.tf_eip = elfhdr->e_entry; 
 }

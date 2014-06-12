@@ -34,7 +34,7 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
         env = sys_getenvid();
         if ((r = sys_page_alloc(env, (void *) (UXSTACKTOP - PGSIZE), 
                         PTE_P | PTE_U | PTE_W)) < 0) 
-            panic("set_pgfault_handler sys_page_map error");
+            panic("set_pgfault_handler sys_page_map error: %e", r);
         
         sys_env_set_pgfault_upcall(env, _pgfault_upcall);
 

@@ -98,6 +98,7 @@ sys_exofork(void)
 
     e->env_status = ENV_NOT_RUNNABLE;
     memcpy(&e->env_tf, &curenv->env_tf, sizeof(struct Trapframe));
+    // child return 0
     e->env_tf.tf_regs.reg_eax = 0;
         
     return e->env_id;
@@ -244,14 +245,16 @@ sys_page_map(envid_t srcenvid, void *srcva,
     if ((r = envid2env(dstenvid, &dstenv, 1)) < 0) 
         return r;
 
-    if (!(pte = pgdir_walk(srcenv->env_pgdir, srcva, 0)))
+    if (!(pte = pgdir_walk(srcenv->env_pgdir, srcva, 0))) {
+        cprintf("null pte\n");
         return -E_INVAL;
+    }
 
     if ((uintptr_t) srcva >= UTOP || (uintptr_t) dstva >= UTOP ||
             ((uintptr_t) srcva)%PGSIZE != 0 || ((uintptr_t) dstva)%PGSIZE != 0 ||
-            !(perm & (PTE_U | PTE_P)) ||
+            !((perm & (PTE_U | PTE_P)) == (PTE_U | PTE_P)) ||
             ((perm & PTE_W) && !(*pte & PTE_W))) {
-
+        cprintf("other perm & PTE_W = %d, pte & PTE_W = %d", perm&PTE_W, *pte&PTE_W);
         return -E_INVAL;
     }
 
