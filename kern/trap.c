@@ -102,29 +102,28 @@ trap_init(void)
     // LAB 3: Your code here.
     // cprintf("DIVIDE = %x\n", (int) DIVIDE);
 
-    SETGATE(idt[T_DIVIDE], 1, GD_KT, DIVIDE, 0);        
-    SETGATE(idt[T_DEBUG], 1, GD_KT, DEBUG, 0);        
-    SETGATE(idt[T_NMI], 1, GD_KT, NMI, 0);        
-    SETGATE(idt[T_BRKPT], 1, GD_KT, BRKPT, 3);        
-    SETGATE(idt[T_OFLOW], 1, GD_KT, OFLOW, 0);        
-    SETGATE(idt[T_BOUND], 1, GD_KT, BOUND, 0);        
-    SETGATE(idt[T_ILLOP], 1, GD_KT, ILLOP, 0);        
-    SETGATE(idt[T_DEVICE], 1, GD_KT, DEVICE, 0);        
-    SETGATE(idt[T_DBLFLT], 1, GD_KT, DBLFLT, 0);        
-    SETGATE(idt[T_TSS], 1, GD_KT, TSS, 0);        
-    SETGATE(idt[T_SEGNP], 1, GD_KT, SEGNP, 0);        
-    SETGATE(idt[T_STACK], 1, GD_KT, STACK, 0);        
-    SETGATE(idt[T_GPFLT], 1, GD_KT, GPFLT, 0);        
-    SETGATE(idt[T_PGFLT], 1, GD_KT, PGFLT, 0);        
-    SETGATE(idt[T_FPERR], 1, GD_KT, FPERR, 0);        
-    SETGATE(idt[T_ALIGN], 1, GD_KT, ALIGN, 0);        
-    SETGATE(idt[T_MCHK], 1, GD_KT, MCHK, 0);        
-    SETGATE(idt[T_SIMDERR], 1, GD_KT, SIMDERR, 0);
+    SETGATE(idt[T_DIVIDE], 0, GD_KT, DIVIDE, 0);        
+    SETGATE(idt[T_DEBUG], 0, GD_KT, DEBUG, 0);        
+    SETGATE(idt[T_NMI], 0, GD_KT, NMI, 0);        
+    SETGATE(idt[T_BRKPT], 0, GD_KT, BRKPT, 3);        
+    SETGATE(idt[T_OFLOW], 0, GD_KT, OFLOW, 0);        
+    SETGATE(idt[T_BOUND], 0, GD_KT, BOUND, 0);        
+    SETGATE(idt[T_ILLOP], 0, GD_KT, ILLOP, 0);        
+    SETGATE(idt[T_DEVICE], 0, GD_KT, DEVICE, 0);        
+    SETGATE(idt[T_DBLFLT], 0, GD_KT, DBLFLT, 0);        
+    SETGATE(idt[T_TSS], 0, GD_KT, TSS, 0);        
+    SETGATE(idt[T_SEGNP], 0, GD_KT, SEGNP, 0);        
+    SETGATE(idt[T_STACK], 0, GD_KT, STACK, 0);        
+    SETGATE(idt[T_GPFLT], 0, GD_KT, GPFLT, 0);        
+    SETGATE(idt[T_PGFLT], 0, GD_KT, PGFLT, 0);        
+    SETGATE(idt[T_FPERR], 0, GD_KT, FPERR, 0);        
+    SETGATE(idt[T_ALIGN], 0, GD_KT, ALIGN, 0);        
+    SETGATE(idt[T_MCHK], 0, GD_KT, MCHK, 0);        
+    SETGATE(idt[T_SIMDERR], 0, GD_KT, SIMDERR, 0);
 #if !FAST_SYS_CALL
-    SETGATE(idt[T_SYSCALL], 1, GD_KT, SYSCALL, 3);
+    SETGATE(idt[T_SYSCALL], 0, GD_KT, SYSCALL, 3);
 #endif // !FAST_SYS_CALL
 
-    
     SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, IRQTIMER, 0);
     SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, IRQKBD, 0);
     SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, IRQSERIAL, 0);
@@ -271,7 +270,9 @@ trap_dispatch(struct Trapframe *tf)
                             cprintf("there is no syscall no is %d\n", 
                                     tf->tf_regs.reg_eax);
                         break;
-    case   IRQ_OFFSET + IRQ_TIMER: return;
+    case   IRQ_OFFSET + IRQ_TIMER: // cprintf("clock interrupt\n");
+                                   lapic_eoi();
+                                   sched_yield();
     defalut:            break;
     } 
 	
@@ -304,6 +305,7 @@ trap(struct Trapframe *tf)
 	// Check that interrupts are disabled.  If this assertion
 	// fails, DO NOT be tempted to fix it by inserting a "cli" in
 	// the interrupt path.
+    // cprintf("trap no = %d\n", tf->tf_trapno);
 	assert(!(read_eflags() & FL_IF));
 
 	if ((tf->tf_cs & 3) == 3) {
