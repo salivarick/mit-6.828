@@ -717,7 +717,7 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
                 vaddr < ROUNDUP((uint32_t) (va + len), PGSIZE); vaddr += PGSIZE) {
             if (vaddr < ULIM) {
                 if ((pte = pgdir_walk(env->env_pgdir, (void *) vaddr, 0))) {
-                    if (!(*pte & (PTE_P | perm)))
+                    if ((*pte & (PTE_P | perm)) != (PTE_P | perm))
                         goto error;
                 }
                 else
@@ -733,10 +733,14 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	return 0;
 
     error:
-        if (vaddr < (uintptr_t) va)
-            user_mem_check_addr = (uintptr_t) va;
-        else
+        if (vaddr > (uintptr_t) va && vaddr < ((uintptr_t) va + len)) {
+            cprintf("vaddr = %x\n", vaddr);
             user_mem_check_addr = vaddr;
+        }
+        else {
+            cprintf("va = %x\n", vaddr);
+            user_mem_check_addr = (uintptr_t) va;
+        }    
         return -E_FAULT;
 }
 

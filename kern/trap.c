@@ -350,9 +350,6 @@ page_fault_handler(struct Trapframe *tf)
 {
 	uint32_t fault_va;
     struct UTrapframe *utf;
-    /* uint32_t curesp;
-    uint32_t env_esp;
-    uint32_t env_eip; */
 
 	// Read processor's CR2 register to find the faulting address
 	fault_va = rcr2();
@@ -360,8 +357,9 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
-    if (!(tf->tf_cs & 3))
+    if (!(tf->tf_cs & 3)) {
         panic("kernel page fault va %08x\n", fault_va);
+    }
 
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
@@ -398,9 +396,9 @@ page_fault_handler(struct Trapframe *tf)
 
     /* there is a user mode page fault upcall */
 
-    user_mem_assert(curenv, (void *) (UXSTACKTOP-PGSIZE), PGSIZE, PTE_P | PTE_W);
     if (curenv->env_pgfault_upcall) {
-        //cprintf("page fault at va %08x, esp is %08x\n", fault_va, tf->tf_esp);
+        // cprintf("page fault at va %08x, esp is %08x\n", fault_va, tf->tf_esp);
+        
         /* recursive trap */
         if (tf->tf_esp > UXSTACKTOP-PGSIZE && tf->tf_esp < UXSTACKTOP) {
             utf = (struct UTrapframe *) (tf->tf_esp-sizeof(struct UTrapframe)-4
@@ -409,6 +407,9 @@ page_fault_handler(struct Trapframe *tf)
         }
         else
             utf = (struct UTrapframe *) (UXSTACKTOP-sizeof(struct UTrapframe));
+        
+        user_mem_assert(curenv, utf, sizeof(struct UTrapframe), PTE_P | PTE_W);
+
         /* setup exception stack */
         utf->utf_regs       = tf->tf_regs;
         utf->utf_esp        = tf->tf_esp;
