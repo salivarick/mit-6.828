@@ -190,7 +190,9 @@ sys_page_alloc(envid_t envid, void *va, int perm)
     struct PageInfo *pp;
     int r;
 
-    if ((uintptr_t) va >= UTOP || !(perm & (PTE_U | PTE_P)))
+    if ((uintptr_t) va >= UTOP || 
+            !((perm & (PTE_U | PTE_P)) == (PTE_U | PTE_P)) || 
+             (perm & ~(PTE_U | PTE_P | PTE_W | PTE_AVAIL)))
         return -E_INVAL;
 
     if ((r = envid2env(envid, &e, 1)) < 0)
@@ -245,21 +247,23 @@ sys_page_map(envid_t srcenvid, void *srcva,
     if ((r = envid2env(dstenvid, &dstenv, 1)) < 0) 
         return r;
 
-    if (!(pte = pgdir_walk(srcenv->env_pgdir, srcva, 0))) {
+    if (!(pp = page_lookup(srcenv->env_pgdir, srcva, &pte))) {
         cprintf("null pte\n");
         return -E_INVAL;
     }
 
     if ((uintptr_t) srcva >= UTOP || (uintptr_t) dstva >= UTOP ||
-            ((uintptr_t) srcva)%PGSIZE != 0 || ((uintptr_t) dstva)%PGSIZE != 0 ||
-            !((perm & (PTE_U | PTE_P)) == (PTE_U | PTE_P)) ||
-            ((perm & PTE_W) && !(*pte & PTE_W))) {
+        ((uintptr_t) srcva)%PGSIZE != 0 || ((uintptr_t) dstva)%PGSIZE != 0)
+       return -E_INVAL;
+    
+    if (!((perm & (PTE_U | PTE_P)) == (PTE_U | PTE_P)) ||
+        (perm & ~(PTE_U | PTE_P | PTE_W | PTE_AVAIL)) ||
+        ((perm & PTE_W) && !(*pte & PTE_W))) {
         cprintf("other perm & PTE_W = %d, pte & PTE_W = %d", perm&PTE_W, *pte&PTE_W);
         return -E_INVAL;
     }
 
-    if ((r = page_insert(dstenv->env_pgdir, 
-                    pa2page(PTE_ADDR(*pte)), dstva, perm)) < 0)
+    if ((r = page_insert(dstenv->env_pgdir, pp, dstva, perm)) < 0)
         return r;
 
     return 0;
@@ -311,6 +315,8 @@ sys_page_unmap(envid_t envid, void *va)
 // The target environment is marked runnable again, returning 0
 // from the paused sys_ipc_recv system call.  (Hint: does the
 // sys_ipc_recv function ever actually return?)
+// 
+// Answer: Yes, it does. - by dale
 //
 // If the sender wants to send a page but the receiver isn't asking for one,
 // then no page mapping is transferred, but no error occurs.
@@ -335,7 +341,40 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+    
+    struct Env *e;
+    struct PageInfo *pp;
+    pte_t *pte;
+    int r;
+
+    if ((r = envid2env(envid, &e, 0)) < 0)
+        return r;
+
+    if (!e->env_ipc_recving)
+        return -E_IPC_NOT_RECV;
+
+    e->env_ipc_recving = false;
+    e->env_ipc_from = curenv->env_id;
+    e->env_ipc_value = value;
+
+    if (e->env_ipc_dstva) {
+        if (!((perm & (PTE_U | PTE_P)) == (PTE_U | PTE_P)) || 
+                (perm & ~(PTE_U | PTE_P | PTE_W | PTE_AVAIL)))
+            return -E_INVAL;
+        if (!(pp = page_lookup(curenv->env_pgdir, srcva, &pte)))
+            return -E_INVAL;
+        if ((perm & PTE_W) && !(*pte & PTE_W))
+            return -E_INVAL;
+
+        e->env_ipc_perm = perm;
+        // mapping
+        if ((r = page_insert(e->env_pgdir, pp, e->env_ipc_dstva, perm)) < 0)
+            return r;
+    }
+    e->env_status = ENV_RUNNABLE;
+    // cprintf("ipc send env[%x] status is %d\n", e->env_id, e->env_status);
+    // panic("sys_ipc_try_send not implemented");
+    return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -353,7 +392,24 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+
+    curenv->env_ipc_recving = true;
+    if ((uint32_t) dstva < UTOP && (uint32_t) dstva > 0) {
+        if (((uint32_t) dstva)%PGSIZE == 0)
+            curenv->env_ipc_dstva = dstva;
+        else
+            return -E_INVAL;
+    }
+    else
+        curenv->env_ipc_dstva = NULL;
+
+    curenv->env_status = ENV_NOT_RUNNABLE;
+    // cprintf("ipc recv env[%x] status is %d\n", curenv->env_id, curenv->env_status);
+    // if success, eventually return 0
+    curenv->env_tf.tf_regs.reg_eax = 0;
+    sched_yield();
+
+	// panic("sys_ipc_recv not implemented");
 	return 0;
 }
 
@@ -392,6 +448,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
                                 return  sys_env_set_pgfault_upcall((envid_t) a1,
                                         (void *) a2);
     case SYS_yield:             sys_yield(); return 0;
+    case SYS_ipc_try_send:      return sys_ipc_try_send((envid_t) a1, a2, (void *)a3, a4);
+    case SYS_ipc_recv:          return sys_ipc_recv((void *) a1);
     case NSYSCALLS:             return -E_INVAL;
     }
 	panic("syscall not implemented");

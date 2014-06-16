@@ -583,9 +583,12 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
+    // cprintf("run env[%x], status is %d\n", e->env_id, e->env_status);
     if (curenv != e) {
-        if (curenv)
-            curenv->env_status = ENV_RUNNABLE;
+        if (curenv) {
+            if (curenv->env_status == ENV_RUNNING)
+                curenv->env_status = ENV_RUNNABLE;
+        }
         curenv = e;
     }
 

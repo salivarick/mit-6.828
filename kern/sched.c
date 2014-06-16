@@ -30,6 +30,8 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+    // if (curenv)
+    //     cprintf("sched currenv[%x] status is %d\n", curenv->env_id, curenv->env_status);
     i = curenv ? (curenv-envs)%NENV : 0;
     circle = NENV + i;
     for (; i < circle; ++ i) {
@@ -40,8 +42,9 @@ sched_yield(void)
     if (i == circle) i = curenv ? (curenv-envs)%NENV : 0;
     
     i = i%NENV;
-    if ((curenv == envs + i && envs[i].env_status == ENV_RUNNING) || 
+    if ((curenv == (envs + i) && envs[i].env_status == ENV_RUNNING) || 
             envs[i].env_status == ENV_RUNNABLE) {
+        // cprintf("sched env[%x] running, status is %d\n", envs[i].env_id, envs[i].env_status);
         env_run(envs+i);
     }
 

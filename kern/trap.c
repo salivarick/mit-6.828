@@ -262,13 +262,8 @@ trap_dispatch(struct Trapframe *tf)
                                       tf->tf_regs.reg_ebx,
                                       tf->tf_regs.reg_edi,
                                       tf->tf_regs.reg_esi);  
-                        if (ret >= 0) {
-                            tf->tf_regs.reg_eax = ret;
-                            return;
-                        }
-                        else
-                            cprintf("there is no syscall no is %d\n", 
-                                    tf->tf_regs.reg_eax);
+                        tf->tf_regs.reg_eax = ret;
+                        return;
                         break;
     case   IRQ_OFFSET + IRQ_TIMER: // cprintf("clock interrupt\n");
                                    lapic_eoi();
