@@ -12,6 +12,7 @@ void
 sched_yield(void)
 {
 	struct Env *idle;
+    uint32_t i, circle;
 
 	// Implement simple round-robin scheduling.
 	//
@@ -29,15 +30,32 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+    // if (curenv)
+    //     cprintf("sched currenv[%x] status is %d\n", curenv->env_id, curenv->env_status);
+    i = curenv ? (curenv-envs)%NENV : 0;
+    circle = NENV + i;
+    for (; i < circle; ++ i) {
+        if (envs[i%NENV].env_status == ENV_RUNNABLE)
+            break;
+    }
+    
+    if (i == circle) i = curenv ? (curenv-envs)%NENV : 0;
+    
+    i = i%NENV;
+    if ((curenv == (envs + i) && envs[i].env_status == ENV_RUNNING) || 
+            envs[i].env_status == ENV_RUNNABLE) {
+        // cprintf("sched env[%x] running, status is %d\n", envs[i].env_id, envs[i].env_status);
+        env_run(envs+i);
+    }
 
-	// sched_halt never returns
-	sched_halt();
+    // sched_halt never returns
+    sched_halt();
 }
 
 // Halt this CPU when there is nothing to do. Wait until the
 // timer interrupt wakes it up. This function never returns.
 //
-void
+    void
 sched_halt(void)
 {
 	int i;
@@ -59,23 +77,22 @@ sched_halt(void)
 	// Mark that no environment is running on this CPU
 	curenv = NULL;
 	lcr3(PADDR(kern_pgdir));
+    
+    // Mark that this CPU is in the HALT state, so that when
+    // timer interupts come in, we know we should re-acquire the
+    // big kernel lock
+    xchg(&thiscpu->cpu_status, CPU_HALTED);
 
-	// Mark that this CPU is in the HALT state, so that when
-	// timer interupts come in, we know we should re-acquire the
-	// big kernel lock
-	xchg(&thiscpu->cpu_status, CPU_HALTED);
-
-	// Release the big kernel lock as if we were "leaving" the kernel
-	unlock_kernel();
-
-	// Reset stack pointer, enable interrupts and then halt.
-	asm volatile (
-		"movl $0, %%ebp\n"
-		"movl %0, %%esp\n"
-		"pushl $0\n"
-		"pushl $0\n"
-		"sti\n"
-		"hlt\n"
-	: : "a" (thiscpu->cpu_ts.ts_esp0));
+    // Release the big kernel lock as if we were "leaving" the kernel
+    unlock_kernel();
+    
+    // Reset stack pointer, enable interrupts and then halt.
+    asm volatile (
+            "movl $0, %%ebp\n"
+            "movl %0, %%esp\n"
+            "pushl $0\n"
+            "pushl $0\n"
+            "sti\n"
+            "hlt\n"
+            : : "a" (thiscpu->cpu_ts.ts_esp0));
 }
-

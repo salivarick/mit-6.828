@@ -20,4 +20,34 @@ void print_trapframe(struct Trapframe *tf);
 void page_fault_handler(struct Trapframe *);
 void backtrace(struct Trapframe *);
 
+extern void DIVIDE();
+extern void DEBUG();
+extern void NMI();
+extern void BRKPT();
+extern void OFLOW();
+extern void BOUND();
+extern void ILLOP();
+extern void DEVICE();
+extern void DBLFLT();
+extern void TSS();
+extern void SEGNP();
+extern void STACK();
+extern void GPFLT();
+extern void PGFLT();
+extern void FPERR();
+extern void ALIGN();
+extern void MCHK();
+extern void SIMDERR();
+extern void SYSCALL();
+extern void DEFAULT();
+
+extern void FASTSYSCALL();
+
+extern void IRQTIMER();
+extern void IRQKBD();
+extern void IRQSERIAL();
+extern void IRQSPURIOUS();
+extern void IRQIDE();
+extern void IRQERROR();
+
 #endif /* JOS_KERN_TRAP_H */

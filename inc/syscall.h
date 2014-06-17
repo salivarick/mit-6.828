@@ -20,4 +20,7 @@ enum {
 	NSYSCALLS
 };
 
+/* Fast system call */
+#define FAST_SYS_CALL   0
+
 #endif /* !JOS_INC_SYSCALL_H */

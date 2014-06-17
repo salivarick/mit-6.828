@@ -49,8 +49,8 @@ endif
 
 # try to infer the correct QEMU
 ifndef QEMU
-QEMU := $(shell if which qemu > /dev/null; \
-	then echo qemu; exit; \
+QEMU := $(shell if which /home/dale/Documents/source/qemu/qemu-6.828/build/bin/qemu > /dev/null; \
+	then echo /home/dale/Documents/source/qemu/qemu-6.828/build/bin/qemu; exit; \
 	else \
 	qemu=/Applications/Q.app/Contents/MacOS/i386-softmmu.app/Contents/MacOS/i386-softmmu; \
 	if test -x $$qemu; then echo $$qemu; exit; fi; fi; \
@@ -82,6 +82,7 @@ PERL	:= perl
 # -fno-builtin is required to avoid refs to undefined functions in the kernel.
 # Only optimize to -O1 to discourage inlining, which complicates backtraces.
 CFLAGS := $(CFLAGS) $(DEFS) $(LABDEFS) -O1 -fno-builtin -I$(TOP) -MD
+# it used to be -fno-omit-frame-pointer
 CFLAGS += -fno-omit-frame-pointer
 CFLAGS += -Wall -Wno-format -Wno-unused -Werror -gstabs -m32
 
