@@ -144,7 +144,26 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+
+    struct Env *e;
+    int r;
+    if ((r = envid2env(envid, &e, true)) < 0)
+        return r;
+
+    e->env_tf = *tf;
+    if (e->env_tf.tf_eip > UTOP)
+        panic("sys env set trapframe tf eip > UTOP");
+    
+    e->env_tf.tf_ds = GD_UD | 3;
+	e->env_tf.tf_es = GD_UD | 3;
+	e->env_tf.tf_ss = GD_UD | 3;
+	e->env_tf.tf_cs = GD_UT | 3;
+       
+    e->env_tf.tf_eflags &= ~FL_IOPL_3;
+    e->env_tf.tf_eflags |= FL_IF;
+
+	// panic("sys_env_set_trapframe not implemented");
+    return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -441,28 +460,57 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 #endif
 
     switch (syscallno) {
-    case SYS_cputs:             sys_cputs((const char *) a1, (size_t) a2); 
-                                return 0; 
-    case SYS_cgetc:             return (uint32_t) sys_cgetc();
-    case SYS_getenvid:          return (uint32_t) sys_getenvid();
-    case SYS_env_destroy:       return (uint32_t) sys_env_destroy((envid_t) a1);
-    case SYS_page_alloc:        return (uint32_t) sys_page_alloc((envid_t) a1,
-                                        (void *) a2, (int) a3); 
-    case SYS_page_map:          return (uint32_t) sys_page_map((envid_t) a1,
-                                        (void *) a2, (envid_t) a3, 
-                                        (void *) a4, (int) a5);
-    case SYS_page_unmap:        return (uint32_t) sys_page_unmap((envid_t) a1,
-                                        (void *) a2);     
-    case SYS_exofork:           return (uint32_t) sys_exofork();
-    case SYS_env_set_status:    return (uint32_t) sys_env_set_status((envid_t) a1, 
-                                        (int) a2);
+    case SYS_cputs:             
+        sys_cputs((const char *) a1, (size_t) a2); 
+        return 0; 
+    
+    case SYS_cgetc:             
+        return (uint32_t) sys_cgetc();
+    
+    case SYS_getenvid:          
+        return (uint32_t) sys_getenvid();
+    
+    case SYS_env_destroy:       
+        return (uint32_t) sys_env_destroy((envid_t) a1);
+    
+    case SYS_page_alloc:        
+        return (uint32_t) sys_page_alloc((envid_t) a1,
+                                         (void *) a2, (int) a3); 
+    case SYS_page_map:          
+        return (uint32_t) sys_page_map((envid_t) a1,
+                                       (void *) a2, (envid_t) a3, 
+                                       (void *) a4, (int) a5);
+    
+    case SYS_page_unmap:        
+        return (uint32_t) sys_page_unmap((envid_t) a1,
+                                         (void *) a2);     
+    
+    case SYS_exofork:           
+        return (uint32_t) sys_exofork();
+    
+    case SYS_env_set_status:    
+        return (uint32_t) sys_env_set_status((envid_t) a1, 
+                                             (int) a2);
+    
+    case SYS_env_set_trapframe: 
+        return (uint32_t) sys_env_set_trapframe((envid_t) a1, 
+                                                (struct Trapframe *) a2);
+    
     case SYS_env_set_pgfault_upcall: 
-                                return  sys_env_set_pgfault_upcall((envid_t) a1,
-                                        (void *) a2);
-    case SYS_yield:             sys_yield(); return 0;
-    case SYS_ipc_try_send:      return sys_ipc_try_send((envid_t) a1, a2, (void *)a3, a4);
-    case SYS_ipc_recv:          return sys_ipc_recv((void *) a1);
-    case NSYSCALLS:             return -E_INVAL;
+        return (uint32_t) sys_env_set_pgfault_upcall((envid_t) a1,
+                                                     (void *) a2);
+    
+    case SYS_yield:            
+        sys_yield(); return 0;
+    
+    case SYS_ipc_try_send:      
+        return (uint32_t) sys_ipc_try_send((envid_t) a1, a2, (void *)a3, a4);
+    
+    case SYS_ipc_recv:          
+        return (uint32_t) sys_ipc_recv((void *) a1);
+    
+    case NSYSCALLS:             
+        return -E_INVAL;
     }
 	panic("syscall not implemented");
 }
