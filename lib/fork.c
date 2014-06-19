@@ -69,15 +69,24 @@ duppage(envid_t envid, unsigned pn)
     int perm = PTE_P | PTE_U;
 	// LAB 4: Your code here.
 	// panic("duppage not implemented");
-    
-    if (uvpd[pn >> 10] & PTE_P) {
-        if (((uvpt[pn] & (perm | PTE_COW)) == (perm | PTE_COW)) ||
+        
+    if (uvpd[pn>>10] & PTE_P) {
+        if ((uvpt[pn] & (perm | PTE_SHARE)) == (perm | PTE_SHARE)) {
+            // cprintf("shared pn = %x\n", pn);
+            if ((r = sys_page_map(0, (void *) (pn*PGSIZE),
+                                  envid, (void *) (pn*PGSIZE),
+                                  uvpt[pn] & PTE_SYSCALL)) < 0)
+                return r;
+        }                   
+        else if (((uvpt[pn] & (perm | PTE_COW)) == (perm | PTE_COW)) ||
             ((uvpt[pn] & (perm | PTE_W)) == (perm | PTE_W))) {
             // cprintf("1pn = %x\n", pn);
+            // map to child
             if ((r = sys_page_map(0, (void *) (pn*PGSIZE), 
                                   envid, (void *) (pn*PGSIZE),
                                   perm | PTE_COW)) < 0)
                 return r;
+            // map to ourself
             if ((r = sys_page_map(0, (void *) (pn*PGSIZE),
                                   0, (void *) (pn*PGSIZE),
                                   perm | PTE_COW)) < 0)

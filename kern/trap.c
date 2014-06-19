@@ -270,9 +270,13 @@ trap_dispatch(struct Trapframe *tf)
                         tf->tf_regs.reg_eax = ret;
                         return;
                         break;
-    case   IRQ_OFFSET + IRQ_TIMER: // cprintf("clock interrupt\n");
-                                   lapic_eoi();
-                                   sched_yield();
+    case   IRQ_OFFSET + IRQ_TIMER:  // cprintf("clock interrupt\n");
+                                    lapic_eoi();
+                                    sched_yield();
+    case   IRQ_OFFSET + IRQ_KBD:    kbd_intr();
+                                    return;
+    case IRQ_OFFSET + IRQ_SERIAL:   serial_intr();
+                                    return;
     defalut:            break;
     } 
 	

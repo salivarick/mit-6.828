@@ -79,7 +79,7 @@ openfile_alloc(struct OpenFile **o)
 			memset(opentab[i].o_fd, 0, PGSIZE);
 			return (*o)->o_fileid;
 		}
-	}
+    }
 	return -E_MAX_OPEN;
 }
 
@@ -115,6 +115,8 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 	// Copy in the path, making sure it's null-terminated
 	memmove(path, req->req_path, MAXPATHLEN);
 	path[MAXPATHLEN-1] = 0;
+    if (debug)
+        cprintf("open file path is %s\n", path);
 
 	// Find an open file ID
 	if ((r = openfile_alloc(&o)) < 0) {

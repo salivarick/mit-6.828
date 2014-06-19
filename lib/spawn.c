@@ -265,7 +265,7 @@ map_segment(envid_t child, uintptr_t va, size_t memsz,
 	int i, r;
 	void *blk;
 
-	cprintf("map_segment %x+%x\n", va, memsz);
+	// cprintf("map_segment %x+%x\n", va, memsz);
 
 	if ((i = PGOFF(va))) {
 		va -= i;
@@ -300,6 +300,22 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
+    
+    int r;
+    int perm = PTE_P | PTE_U;
+    uint32_t pn;
+
+    for (pn = 0; pn < USTACKTOP >> PGSHIFT; ++ pn) {
+        if (uvpd[pn>>10] & PTE_P) {
+            if ((uvpt[pn] & (perm | PTE_SHARE)) == (perm | PTE_SHARE)) {
+                if ((r = sys_page_map(0, (void *) (pn*PGSIZE),
+                                      child, (void *) (pn*PGSIZE),
+                                      uvpt[pn] & PTE_SYSCALL)) < 0)
+                    return r;
+            }
+        }   
+    }
+
 	return 0;
 }
 
